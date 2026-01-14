@@ -3,6 +3,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pathlib import Path
 import torch
+import umap
 
 
 class Visualiser:
@@ -11,7 +12,7 @@ class Visualiser:
         self.directory = Path(directory)
         self.vae = vae
         self.base_dir = Path("visu") / self.directory
-        for sub in ("recon", "pca", "interp", "noise"):
+        for sub in ("recon", "pca", "umap", "interp", "noise"):
             (self.base_dir / sub).mkdir(parents=True, exist_ok=True)
 
     def _split_outputs(self, outputs):
@@ -46,14 +47,12 @@ class Visualiser:
                     if images_shown >= num_images:
                         break
 
-                    # Original image
                     plt.subplot(2, num_images, images_shown + 1)
                     plt.imshow(images[i].cpu().squeeze(), cmap='gray')
                     plt.axis('off')
                     if images_shown == 0:
                         plt.title('Original Images')
 
-                    # Reconstructed image
                     plt.subplot(2, num_images, images_shown + 1 + num_images)
                     plt.imshow(decoded[i].cpu().squeeze(), cmap='gray')
                     plt.axis('off')
@@ -87,19 +86,47 @@ class Visualiser:
                 Z_list.append(encoded.detach().cpu())
                 Y_list.append(label.cpu())
 
-        Z = torch.cat(Z_list, dim=0)  # [N, latent_dim]
-        Y = torch.cat(Y_list, dim=0)  # [N]
+        Z = torch.cat(Z_list, dim=0)
+        Y = torch.cat(Y_list, dim=0)
 
-        # PCA via SVD
         Z = Z - Z.mean(dim=0, keepdim=True)
         U, S, Vh = torch.linalg.svd(Z, full_matrices=False)
-        Z2 = Z @ Vh[:2].T  # [N, 2]
+        Z2 = Z @ Vh[:2].T
 
         fig = plt.figure(figsize=(7, 6))
         plt.scatter(Z2[:, 0].numpy(), Z2[:, 1].numpy(), s=8, c=Y.numpy())
         plt.colorbar()
         plt.title("PCA 2D du latent z")
         fig.savefig(self.base_dir / "pca" / f"epoch_{epoch}.png")
+        plt.close(fig)
+
+    def umap_2d_latent(self, model, loader, device="cuda", max_batches=50, epoch=0, n_neighbors=15, min_dist=0.1):
+        model.eval()
+        Z_list, Y_list = [], []
+
+        with torch.no_grad():
+            for idx, (image, label) in enumerate(loader):
+                if idx >= max_batches:
+                    break
+                image = image.to(device)
+                out = model(image)
+                _, latent, logvar = self._split_outputs(out)
+                encoded = latent
+
+                Z_list.append(encoded.detach().cpu())
+                Y_list.append(label.cpu())
+
+        Z = torch.cat(Z_list, dim=0).numpy()
+        Y = torch.cat(Y_list, dim=0).numpy()
+
+        reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, metric="euclidean")
+        Z2 = reducer.fit_transform(Z)
+
+        fig = plt.figure(figsize=(7, 6))
+        plt.scatter(Z2[:, 0], Z2[:, 1], s=8, c=Y)
+        plt.colorbar()
+        plt.title("UMAP 2D du latent z")
+        fig.savefig(self.base_dir / "umap" / f"epoch_{epoch}.png")
         plt.close(fig)
 
     @torch.no_grad()
@@ -119,14 +146,11 @@ class Visualiser:
             if x2 is not None and x5 is not None:
                 break
 
-        x2 = x2.unsqueeze(0).to(device)  # [1,1,28,28]
+        x2 = x2.unsqueeze(0).to(device)
         x5 = x5.unsqueeze(0).to(device)
 
         _, z2, logvar2 = self._split_outputs(model(x2))
         _, z5, logvar5 = self._split_outputs(model(x5))
-        # if self.vae:
-        #    z2 = self._reparameterize(z2, logvar2)
-        #    z5 = self._reparameterize(z5, logvar5)
 
         alphas = torch.linspace(0, 1, steps, device=device)
         z_interp = (1 - alphas[:, None]) * z2 + alphas[:, None] * z5
