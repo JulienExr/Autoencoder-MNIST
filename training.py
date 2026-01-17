@@ -5,14 +5,14 @@ from visualisation import Visualiser
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def train_autoencoder(autoencoder, dataloader, test_loader, num_epochs=10, learning_rate=1e-3, device=device):
+def train_autoencoder(autoencoder, dataloader, test_loader, num_epochs=10, learning_rate=1e-3, device=device, visu_dir="mnist_autoencoder"):
     autoencoder.to(device)
     autoencoder.train()
 
     optimizer = torch.optim.Adam(autoencoder.parameters(), lr=learning_rate)
     criterion = torch.nn.MSELoss()
     losses = []
-    visualiser = Visualiser(directory="mnist_autoencoder")
+    visualiser = Visualiser(directory=visu_dir)
 
     for epoch in range(num_epochs):
         epoch_loss = 0.0
@@ -42,7 +42,7 @@ def train_autoencoder(autoencoder, dataloader, test_loader, num_epochs=10, learn
         print(f"\nEpoch [{epoch+1}/{num_epochs}], Loss: {losses[-1]:.4f}")
     return losses
 
-def train_vae(vae, dataloader, test_loader, num_epochs=10, learning_rate=1e-3, latent_dim=256,device=device):
+def train_vae(vae, dataloader, test_loader, num_epochs=10, learning_rate=1e-3, latent_dim=256, device=device, visu_dir="mnist_vae"):
     vae.to(device)
     vae.train()
 
@@ -51,7 +51,7 @@ def train_vae(vae, dataloader, test_loader, num_epochs=10, learning_rate=1e-3, l
     recon_losses = []
     kl_losses = []
     losses = []
-    visualiser = Visualiser(directory="mnist_vae", vae=True)
+    visualiser = Visualiser(directory=visu_dir, vae=True)
 
     for epoch in range(num_epochs):
         epoch_loss = 0.0
