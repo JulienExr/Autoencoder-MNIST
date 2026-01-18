@@ -1,69 +1,101 @@
 import torch
 import argparse
+from pathlib import Path
 
-from training import train_autoencoder, train_vae
+from training import train_autoencoder, train_vae, train_cvae
 from ae import build_autoencoder
 from vae import build_vae
+from cvae import build_cvae
 from data import get_fashion_mnist_dataloaders, get_mnist_dataloaders
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train Autoencoder or Variational Autoencoder")
-    parser.add_argument('--model', type=str, choices=['AE', 'VAE'], required=True, help="Model type to train: 'AE' or 'VAE'")
+    parser.add_argument('--model', type=str, choices=['AE', 'VAE', 'CVAE'], default='AE', help="Model type to train: 'AE', 'VAE' or 'CVAE'")
     parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion_mnist'], default='mnist', help="Dataset to use: 'mnist' or 'fashion_mnist'")
     parser.add_argument('--latent_dim', type=int, default=32, help="Latent dimension size")
-
+    parser.add_argument('--epochs', type=int, default=50, help="Number of training epochs")
     return parser.parse_args()
 
-def main_AE(dataset='mnist', latent_dim=256):
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using device: {device}")
-
-    if dataset == 'mnist':
-        train_loader, test_loader = get_mnist_dataloaders(batch_size=128)
-    elif dataset == 'fashion_mnist':
-        train_loader, test_loader = get_fashion_mnist_dataloaders(batch_size=128)
-    else:
-        raise ValueError(f"Unsupported dataset: {dataset}")
-
-    autoencoder = build_autoencoder(latent_dim=latent_dim)
-
-    print("Starting training...")
-    train_autoencoder(autoencoder, train_loader, test_loader, num_epochs=20, learning_rate=1e-3,
-                       device=device, visu_dir=f"{dataset}_autoencoder")
-
-    torch.save(autoencoder.encoder.state_dict(), 'model/AE/encoder.pth')
-    torch.save(autoencoder.decoder.state_dict(), 'model/AE/decoder.pth')
-    print("Model saved as 'model/AE/encoder.pth' and 'model/AE/decoder.pth'.")
-
-def main_VAE(dataset='mnist', latent_dim=32):
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f"Using device: {device}")
-
-    if dataset == 'mnist':
-        train_loader, test_loader = get_mnist_dataloaders(batch_size=128)
-    elif dataset == 'fashion_mnist':
-        train_loader, test_loader = get_fashion_mnist_dataloaders(batch_size=128)
-    else:
-        raise ValueError(f"Unsupported dataset: {dataset}")
-
-    vae = build_vae(latent_dim=latent_dim, mode="pp")
-
-    print("Start training")
-    train_vae(vae, train_loader, test_loader, num_epochs=50, learning_rate=1e-3, latent_dim=latent_dim,
-               device=device, visu_dir=f"{dataset}_vae")
-    torch.save(vae.encoder.state_dict(), 'model/VAE/encoder.pth')
-    torch.save(vae.decoder.state_dict(), 'model/VAE/decoder.pth')
-    print("Model saved as 'model/VAE/encoder.pth' and 'model/VAE/decoder.pth'.")
 
 def main():
+
     args = parse_args()
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
+
+
+
     if args.model == 'AE':
-        main_AE(dataset=args.dataset, latent_dim=args.latent_dim)
+        if args.dataset == 'mnist':
+            train_loader, test_loader = get_mnist_dataloaders(batch_size=128)
+
+        elif args.dataset == 'fashion_mnist':
+            train_loader, test_loader = get_fashion_mnist_dataloaders(batch_size=128)
+        
+        else:
+            raise ValueError(f"Unsupported dataset: {args.dataset}")
+        
+        model = build_autoencoder(latent_dim=args.latent_dim)
+        print("Starting training...")
+        train_autoencoder(model, train_loader, test_loader, num_epochs=args.epochs, learning_rate=1e-3,
+                           device=device, visu_dir=f"{args.dataset}_autoencoder")
+        
+        save_path = Path('model/AE')
+        save_path.mkdir(parents=True, exist_ok=True)
+        torch.save(model.encoder.state_dict(), save_path / f'encoder_{args.dataset}.pth')
+        torch.save(model.decoder.state_dict(), save_path / f'decoder_{args.dataset}.pth')
+        print(f"Model saved as '{save_path / f'encoder_{args.dataset}.pth'}' and '{save_path / f'decoder_{args.dataset}.pth'}'.")
+
     elif args.model == 'VAE':
-        main_VAE(dataset=args.dataset, latent_dim=args.latent_dim)
+        if args.dataset == 'mnist':
+            train_loader, test_loader = get_mnist_dataloaders(batch_size=128, normalize=True)
+
+        elif args.dataset == 'fashion_mnist':
+            train_loader, test_loader = get_fashion_mnist_dataloaders(batch_size=128, normalize=True)
+        
+        else:
+            raise ValueError(f"Unsupported dataset: {args.dataset}")
+        
+        model = build_vae(latent_dim=args.latent_dim, mode="pp")
+        print("Starting training...")
+        train_vae(model, train_loader, test_loader, num_epochs=args.epochs, learning_rate=1e-3, latent_dim=args.latent_dim,
+                   device=device, visu_dir=f"{args.dataset}_vae")
+        
+        save_path = Path('model/VAE')
+        save_path.mkdir(parents=True, exist_ok=True)
+        torch.save(model.encoder.state_dict(), save_path / f'encoder_{args.dataset}.pth')
+        torch.save(model.decoder.state_dict(), save_path / f'decoder_{args.dataset}.pth')
+        print(f"Model saved as '{save_path / f'encoder_{args.dataset}.pth'}' and '{save_path / f'decoder_{args.dataset}.pth'}'.")
+
+    elif args.model == 'CVAE':
+        if args.dataset == 'mnist':
+            train_loader, test_loader = get_mnist_dataloaders(batch_size=128, normalize=True)
+
+        elif args.dataset == 'fashion_mnist':
+            train_loader, test_loader = get_fashion_mnist_dataloaders(batch_size=128, normalize=True)
+        
+        else:
+            raise ValueError(f"Unsupported dataset: {args.dataset}")
+        
+        model = build_cvae(latent_dim=args.latent_dim)
+        print("Starting training...")
+        train_cvae(model, train_loader, test_loader, num_epochs=args.epochs, learning_rate=1e-3, latent_dim=args.latent_dim,
+                    device=device, visu_dir=f"{args.dataset}_cvae")
+        
+        save_path = Path('model/CVAE')
+        save_path.mkdir(parents=True, exist_ok=True)
+        torch.save(model.encoder.state_dict(), save_path / f'encoder_{args.dataset}.pth')
+        torch.save(model.decoder.state_dict(), save_path / f'decoder_{args.dataset}.pth')
+        print(f"Model saved as '{save_path / f'encoder_{args.dataset}.pth'}' and '{save_path / f'decoder_{args.dataset}.pth'}'.")
+
+    else:
+        raise ValueError(f"Unsupported model type: {args.model}")
 
 if __name__ == "__main__":
-    # By default the script runs AE training first, then VAE training.
-    # If you want to run only one, comment the other line.
-    # You can choose the dataset between 'mnist' and 'fashion_mnist'
+    # By default the script runs AE training on MNIST dataset with latent dim 32 for 50 epochs
+    # if you want to run other configurations, use command line arguments
+    # Example: python main.py --model VAE --dataset fashion_mnist --latent_dim 128 --epochs 50 
+    # (train VAE on Fashion-MNIST with latent dim 128 for 50 epochs)
+    
     main()

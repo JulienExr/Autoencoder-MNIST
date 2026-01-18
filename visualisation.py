@@ -8,12 +8,46 @@ import umap
 
 class Visualiser:
 
-    def __init__(self, directory, vae=False):
+    def __init__(self, directory, vae=False, forward_fn=None, label_sampler=None):
         self.directory = Path(directory)
         self.vae = vae
+        self.forward_fn = forward_fn
+        self.label_sampler = label_sampler
         self.base_dir = Path("visu") / self.directory
         for sub in ("recon", "pca", "umap", "interp", "noise"):
             (self.base_dir / sub).mkdir(parents=True, exist_ok=True)
+
+    def _forward(self, model, images, labels=None):
+        if self.forward_fn is not None:
+            return self.forward_fn(model, images, labels)
+        if labels is not None:
+            try:
+                return model(images, labels)
+            except TypeError:
+                return model(images)
+        return model(images)
+
+    def _encode(self, model, images, labels=None):
+        if labels is not None:
+            try:
+                out = model.encoder(images, labels)
+                if isinstance(out, tuple) and len(out) >= 2:
+                    return out[0], out[1]
+                return out
+            except TypeError:
+                return model.encoder(images)
+        return model.encoder(images)
+
+    def _decode(self, model, latents, labels=None):
+        if labels is not None:
+            if hasattr(model, "encoder") and hasattr(model.encoder, "embed"):
+                embed_labels = model.encoder.embed(labels)
+                return model.decoder(latents, embed_labels)
+            try:
+                return model.decoder(latents, labels)
+            except TypeError:
+                return model.decoder(latents)
+        return model.decoder(latents)
 
     def _split_outputs(self, outputs):
         if self.vae:
@@ -38,10 +72,11 @@ class Visualiser:
 
         with torch.no_grad():
             for data in dataloader:
-                images, _ = data
+                images, labels = data
                 images = images.to(device)
+                labels = labels.to(device)
 
-                decoded, _, _ = self._split_outputs(model(images))
+                decoded, _, _ = self._split_outputs(self._forward(model, images, labels))
 
                 for i in range(images.size(0)):
                     if images_shown >= num_images:
@@ -82,7 +117,8 @@ class Visualiser:
                 if idx >= max_batches:
                     break
                 image = image.to(device)
-                out = model(image)
+                label = label.to(device)
+                out = self._forward(model, image, label)
                 _, latent, logvar = self._split_outputs(out)
                 encoded = latent
 
@@ -112,7 +148,8 @@ class Visualiser:
                 if idx >= max_batches:
                     break
                 image = image.to(device)
-                out = model(image)
+                label = label.to(device)
+                out = self._forward(model, image, label)
                 _, latent, logvar = self._split_outputs(out)
                 encoded = latent
 
@@ -151,14 +188,19 @@ class Visualiser:
 
         x2 = x2.unsqueeze(0).to(device)
         x5 = x5.unsqueeze(0).to(device)
+        label2 = torch.tensor([2], device=device)
+        label5 = torch.tensor([5], device=device)
 
-        _, z2, logvar2 = self._split_outputs(model(x2))
-        _, z5, logvar5 = self._split_outputs(model(x5))
+        _, z2, logvar2 = self._split_outputs(self._forward(model, x2, label2))
+        _, z5, logvar5 = self._split_outputs(self._forward(model, x5, label5))
 
         alphas = torch.linspace(0, 1, steps, device=device)
         z_interp = (1 - alphas[:, None]) * z2 + alphas[:, None] * z5
 
-        x_interp = model.decoder(z_interp).cpu()
+        interp_labels = torch.where(alphas < 0.5, label2.item(), label5.item())
+        interp_labels = interp_labels.to(device=device, dtype=torch.long)
+
+        x_interp = self._decode(model, z_interp, interp_labels).cpu()
 
         fig = plt.figure(figsize=(1.5 * steps, 2))
         for i in range(steps):
@@ -176,12 +218,16 @@ class Visualiser:
         model.eval()
 
         z = torch.randn(num_images, latent_dim, device=device)
-        generated = model.decoder(z)
+        labels = None
+        if self.label_sampler is not None:
+            labels = self.label_sampler(num_images, device)
+
+        generated = self._decode(model, z, labels)
         if self.vae:
-            re_mu, _ = model.encoder(generated)
+            re_mu, _ = self._encode(model, generated, labels)
             reencoded = re_mu
         else:
-            reencoded = model.encoder(generated)
+            reencoded = self._encode(model, generated, labels)
 
         latent_drift = torch.norm(reencoded - z, dim=1).mean().item()
 
@@ -194,6 +240,37 @@ class Visualiser:
         plt.suptitle("Samples from random latent")
         save_path = save_dir / f"epoch_{epoch}.png"
         fig.tight_layout()
+        fig.savefig(save_path)
+        plt.close(fig)
+
+        return generated.detach().cpu()
+
+    @torch.no_grad()
+    def visu_from_noise_by_label(self, model, device='cuda', latent_dim=256, epoch=0, num_per_label=1, num_classes=10):
+        """Generate random latents per label and decode them to visualize conditional sampling."""
+        model.to(device)
+        model.eval()
+
+        total = num_classes * num_per_label
+        z = torch.randn(total, latent_dim, device=device)
+        labels = torch.arange(num_classes, device=device).repeat(num_per_label)
+
+        generated = self._decode(model, z, labels)
+
+        save_dir = self.base_dir / "noise"
+        fig = plt.figure(figsize=(1.6 * num_classes, 1.6 * num_per_label))
+        for i in range(total):
+            row = i // num_classes
+            col = i % num_classes
+            plt.subplot(num_per_label, num_classes, i + 1)
+            plt.imshow(generated[i, 0].detach().cpu(), cmap='gray')
+            plt.axis('off')
+            if row == 0:
+                plt.title(str(col), fontsize=10)
+
+        plt.suptitle("Conditional samples by label")
+        fig.tight_layout(rect=[0.05, 0.02, 1, 0.95])
+        save_path = save_dir / f"epoch_{epoch}_by_label.png"
         fig.savefig(save_path)
         plt.close(fig)
 
