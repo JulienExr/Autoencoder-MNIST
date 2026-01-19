@@ -7,6 +7,7 @@ This repository contains simple PyTorch implementations of an Autoencoder (AE) a
 - [Quick project layout](#quick-project-layout)
 - [Autoencoder (AE) -- summary and visualizations](#autoencoder-ae----summary-and-visualizations)
 - [Variational Autoencoder (VAE) -- summary and visualizations](#variational-autoencoder-vae----summary-and-visualizations)
+- [Conditional VAE (CVAE) -- summary and visualizations](#conditional-vae-cvae----summary-and-visualizations)
 - [Fashion-MNIST example renders](#fashion-mnist-example-renders)
 - [Usage instructions](#usage-instructions)
 - [Small tips](#small-tips)
@@ -15,11 +16,12 @@ This repository contains simple PyTorch implementations of an Autoencoder (AE) a
 
 - `ae.py` -- AE model (encoder + decoder).
 - `vae.py` -- VAE model (probabilistic encoder producing μ and logvar + decoder). Two encoder/decoder variants exist (`default` and `pp`).
+- `cvae.py` -- CVAE model (VAE conditioned on class labels).
 - `training.py` -- training loops for AE and VAE. Visualization is called automatically from here each epoch via `Visualiser`.
 - `main.py` -- example entry points. By default it runs AE training then VAE training (see note below).
 - `visualisation.py` -- `Visualiser` helper used by `training.py` to save reconstructions, PCA plots, interpolations and noise samples into `visu/`.
 - `data.py` -- MNIST dataloader helpers.
-- `model/AE/`, `model/VAE/` -- expected checkpoints are saved here (encoder/decoder state dicts).
+- `model/AE/`, `model/VAE/`, `model/CVAE/` -- expected checkpoints are saved here (encoder/decoder state dicts).
 
 
 ## Autoencoder (AE) -- summary and visualizations
@@ -105,6 +107,33 @@ Example placeholders:
 </figure>
 
 - These samples should look more digit-like than AE noise samples because the VAE latent is regularized toward the Gaussian prior.
+
+## Conditional VAE (CVAE) -- summary and visualizations
+
+The CVAE extends the VAE by conditioning both encoder and decoder on the class label $y$. This lets you guide generation by specifying a digit class.
+
+- Conditioning: labels are injected into the encoder/decoder (e.g., via concatenation or embeddings) so the latent is informed by the target class.
+- Controlled sampling: you can sample $z \sim \mathcal{N}(0, 1)$ and decode with a chosen label to generate class-specific digits.
+- Reconstructions: expect reconstructions similar to VAE, but with better control over class identity.
+
+Example placeholders:
+
+<figure style="text-align: center;">
+  <img src="demo/recon_cvae_50.png" alt="CVAE reconstruction example" style="max-width: 100%;" />
+  <figcaption style="font-style: italic;">Figure: Originals vs CVAE reconstructions conditioned on labels.</figcaption>
+</figure>
+
+<figure style="text-align: center;">
+  <img src="demo/pca_cvae_50.png" alt="CVAE PCA example" style="max-width: 100%;" />
+  <figcaption style="font-style: italic;">Figure: PCA 2D projection of CVAE latent vectors, colored by digit label.</figcaption>
+</figure>
+
+<figure style="text-align: center;">
+  <img src="demo/noise_cvae_50.png" alt="CVAE sampled images example" style="max-width: 100%;" />
+  <figcaption style="font-style: italic;">Figure: Samples from N(0, 1) decoded with a fixed label (class-conditional generation).</figcaption>
+</figure>
+
+- A CVAE is useful when you need controllable generation (choose a digit) while still benefiting from a structured latent prior. The trade-off is that conditioning slightly constrains the latent space, so diversity within a class can depend on how well labels are injected.
 
 ## Fashion-MNIST example renders
 
