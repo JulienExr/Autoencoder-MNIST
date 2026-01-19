@@ -4,9 +4,6 @@ data/
 # Ignore visualization outputs
 visu/
 
-# Ignore model checkpoints and outputs
-model/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
