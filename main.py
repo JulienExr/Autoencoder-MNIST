@@ -2,10 +2,10 @@ import torch
 import argparse
 from pathlib import Path
 
-from training import train_autoencoder, train_vae, train_cvae
-from ae import build_autoencoder
-from vae import build_vae
-from cvae import build_cvae
+from src.training import train_autoencoder, train_vae, train_cvae
+from src.ae import build_autoencoder
+from src.vae import build_vae
+from src.cvae import build_cvae
 from data import get_fashion_mnist_dataloaders, get_mnist_dataloaders
 
 def parse_args():
