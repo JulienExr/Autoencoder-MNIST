@@ -1,6 +1,10 @@
 # Autoencoder & VAE on MNIST
 
-This repository contains simple PyTorch implementations of an Autoencoder (AE) and a Variational Autoencoder (VAE) trained on MNIST. The code is minimal and focused on experiments: training, latent-space inspection, reconstructions, interpolation (2 → 5), and sampling from the latent space.
+## Overview
+
+This repository contains clean PyTorch implementations of an Autoencoder (AE) and Variational Autoencoder (VAE) trained on MNIST.
+
+**Try the interactive demo:** https://julienexr-autoencooder-mnist-app-sehuso.streamlit.app/
 
 ## Table of contents
 
