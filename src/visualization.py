@@ -6,7 +6,7 @@ import torch
 import umap
 
 
-class Visualiser:
+class Visualizer:
 
     def __init__(self, directory, vae=False, forward_fn=None, label_sampler=None):
         self.directory = Path(directory)

@@ -4,9 +4,9 @@ from pathlib import Path
 import re
 from torchvision.utils import make_grid
 
-from src.ae import build_autoencoder
-from src.vae import build_vae
-from src.cvae import build_cvae
+from modules.autoencoder.ae import build_autoencoder
+from modules.vae.vae import build_vae
+from modules.cvae.cvae import build_cvae
 from src.data import get_mnist_dataloaders, get_fashion_mnist_dataloaders
 
 

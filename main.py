@@ -2,10 +2,12 @@ import torch
 import argparse
 from pathlib import Path
 
-from src.training import train_autoencoder, train_vae, train_cvae
-from src.ae import build_autoencoder
-from src.vae import build_vae
-from src.cvae import build_cvae
+from modules.autoencoder.training import train_autoencoder
+from modules.autoencoder.ae import build_autoencoder
+from modules.vae.training import train_vae
+from modules.vae.vae import build_vae
+from modules.cvae.training import train_cvae
+from modules.cvae.cvae import build_cvae
 from src.data import get_fashion_mnist_dataloaders, get_mnist_dataloaders
 
 def parse_args():
@@ -14,7 +16,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion_mnist'], default='mnist', help="Dataset to use: 'mnist' or 'fashion_mnist'")
     parser.add_argument('--latent_dim', type=int, default=32, help="Latent dimension size")
     parser.add_argument('--epochs', type=int, default=50, help="Number of training epochs")
-    parser.add_argument('--visualise', action='store_true', help="Whether to generate visualizations during training")
+    parser.add_argument('--visualize', action='store_true', help="Whether to generate visualizations during training")
     return parser.parse_args()
 
 
@@ -39,7 +41,7 @@ def main():
         model = build_autoencoder(latent_dim=args.latent_dim)
         print("Starting training...")
         train_autoencoder(model, train_loader, test_loader, num_epochs=args.epochs, learning_rate=1e-3,
-                   latent_dim=args.latent_dim, device=device, visu_dir=f"{args.dataset}_autoencoder", visualise=args.visualise)
+                   latent_dim=args.latent_dim, device=device, visu_dir=f"{args.dataset}_autoencoder", visualize=args.visualize)
         
         save_path = Path('models/AE')
         save_path.mkdir(parents=True, exist_ok=True)
@@ -60,7 +62,7 @@ def main():
         model = build_vae(latent_dim=args.latent_dim, mode="pp")
         print("Starting training...")
         train_vae(model, train_loader, test_loader, num_epochs=args.epochs, learning_rate=1e-3, latent_dim=args.latent_dim,
-                   device=device, visu_dir=f"{args.dataset}_vae", visualise=args.visualise)
+                   device=device, visu_dir=f"{args.dataset}_vae", visualize=args.visualize)
         
         save_path = Path('models/VAE')
         save_path.mkdir(parents=True, exist_ok=True)
@@ -81,7 +83,7 @@ def main():
         model = build_cvae(latent_dim=args.latent_dim)
         print("Starting training...")
         train_cvae(model, train_loader, test_loader, num_epochs=args.epochs, learning_rate=1e-3, latent_dim=args.latent_dim,
-                    device=device, visu_dir=f"{args.dataset}_cvae", visualise=args.visualise)
+                    device=device, visu_dir=f"{args.dataset}_cvae", visualize=args.visualize)
         
         save_path = Path('models/CVAE')
         save_path.mkdir(parents=True, exist_ok=True)
