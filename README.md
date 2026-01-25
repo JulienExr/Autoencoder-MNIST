@@ -21,13 +21,17 @@ This repository contains PyTorch implementations of different type of autoencode
 - `modules/vae/training.py` -- VAE training loop.
 - `modules/cvae/cvae.py` -- CVAE model (VAE conditioned on class labels).
 - `modules/cvae/training.py` -- CVAE training loop.
+- `modules/vq_vae/vq_vae.py` -- VQ-VAE model (encoder + decoder + vector quantizer).
+- `modules/vq_vae/tranformer_prior.py` -- Transformer prior over VQ codebook indices.
+- `modules/vq_vae/training.py` -- VQ-VAE + Transformer prior training loops.
 - `main.py` -- example entry points. By default it runs AE training then VAE training (see note below).
 - `src/visualization.py` -- `Visualizer` helper used by `training.py` to save reconstructions, PCA plots, interpolations and noise samples into `visu/`.
 - `src/data.py` -- MNIST dataloader helpers.
 - `modules/autoencoder/` -- AE module README and usage notes.
 - `modules/vae/` -- VAE module README and usage notes.
 - `modules/cvae/` -- CVAE module README and usage notes.
-- `models/AE/`, `models/VAE/`, `models/CVAE/` -- expected checkpoints are saved here (encoder/decoder state dicts).
+- `modules/vq_vae/` -- VQ-VAE + Transformer prior README and usage notes.
+- `models/AE/`, `models/VAE/`, `models/CVAE/`, `models/VQ-VAE/` -- expected checkpoints are saved here (encoder/decoder/codebook state dicts).
 
 ## Modules
 
@@ -36,6 +40,7 @@ Each model has its own README with full explanations and figures :
 - Autoencoder (AE): [modules/autoencoder/README.md](modules/autoencoder/README.md)
 - Variational Autoencoder (VAE): [modules/vae/README.md](modules/vae/README.md)
 - Conditional VAE (CVAE): [modules/cvae/README.md](modules/cvae/README.md)
+- VQ-VAE + Transformer Prior: [modules/vq_vae/README.md](modules/vq_vae/README.md)
 
 ## Usage instructions
 
@@ -82,6 +87,6 @@ python main.py --model VAE --dataset fashion_mnist --latent_dim 128
 
 4. Outputs
 
-- Model checkpoints are saved under `models/AE/` and `models/VAE/` (encoder/decoder state dicts).
+- Model checkpoints are saved under `models/AE/`, `models/VAE/`, `models/CVAE/`, and `models/VQ-VAE/`.
 - Visual outputs are saved under `visu/<dataset>_<model>/` with subfolders `recon`, `pca`, `umap`, `interp`, and `noise`.
 - If you want to try with your own model saved on models/* use : `streamlit run app.py`.
